@@ -104,7 +104,7 @@ def send_google_email(c: Credentials, to_emails: str, subject: str, body: str):
                 userId="me", body={"raw": raw_message}
             ).execute()
             logging.info(f"Correo enviado a {to_email}")
-        return {"success": True, "message": f"Correo enviado a: {", ".join(to_emails)}"}
+        return {"success": True, "message": f"Correo enviado a: {', '.join(to_emails)}"}
     except Exception as e:
         traceback.print_exc()
         return {"success": False,"message": str(e)}
