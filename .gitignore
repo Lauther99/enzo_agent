@@ -1,0 +1,13 @@
+.env
+
+__pycache__
+
+notebooks
+
+
+secret
+
+venv
+
+ngrok.exe
+.vscode
