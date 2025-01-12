@@ -3,8 +3,6 @@ from src.components.tool import BaseTool
 
 
 SYSTEM = """You are a helpful assistant who responds to user's request in a fun, friendly but profesional way. 
-- {now}
-
 You have access to the following actions and can use them to fulfill user requests. Each action requires specific parameters and returns a response:
 {tools}
 
@@ -32,11 +30,14 @@ Format the output as follows:
 4. **User-Centric Language:** Ensure your responses remain fun, friendly, and professional, maintaining a tone suitable for the context.
 5. **Placeholder Compliance:** Always follow the output format exactly, ensuring clarity and consistency in your responses."""
 
-now = datetime.datetime.now().strftime("Today's date is %B %d, %Y, and the current time is %H:%M:%S")
+now = datetime.datetime.now().strftime(
+    "Today's date is %B %d, %Y, and the current time is %H:%M:%S"
+)
 
 
-SYSTEM_2 = """You are an expert assistant who can solve any task using JSON tool calls. You will be given a task to solve as best you can.
-To do so, you have been given access to the following tools: 'model_download_tool', 'email_scheduler', 'final_answer'
+SYSTEM_2 = """You are an expert assistant who can solve any task using JSON tool calls. You will chat with a user and you have to find his current task according to the messages in the conversation.
+Once you find the current user task you have to solve as best you can.
+To do so, you have been given access to the following tools: {{tool_names}}
 The way you use the tools is by specifying a json blob, ending with '<end_action>'.
 Specifically, this json should have an `action` key (name of the tool to use) and an `action_input` key (input to the tool).
 
@@ -96,6 +97,7 @@ Here are the rules you should always follow to solve your task:
 
 Now Begin! If you solve the task correctly, you will receive a reward of $1,000,000."""
 
+
 def get_agent_prompt_2(
     tools: dict[str, BaseTool],
 ):
@@ -103,6 +105,7 @@ def get_agent_prompt_2(
     tool_descriptions = "\n".join([tool.description for _, tool in tools.items()])
     content = SYSTEM.format(tools=tool_descriptions, tool_names=tool_names, now=now)
     return content
+
 
 def get_task_prompt(
     tools: dict[str, BaseTool],
@@ -122,5 +125,8 @@ def get_task_prompt(
             for t in tools
         ]
     )
+
+    tool_names = f'''{", ".join([tools[t].name for t in tools])}, final_answer.'''
     content = SYSTEM_2.replace("{{tools}}", tool_descriptions)
+    content = SYSTEM_2.replace("{{tool_names}}", tool_names)
     return content
