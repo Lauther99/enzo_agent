@@ -1,6 +1,7 @@
 from firebase_admin import credentials, initialize_app, firestore
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.cloud import firestore as fs
+from src.firebase.users_manager import UserManager
 from src.settings.settings import Config
 from google.auth.transport.requests import Request as GoogleRequest
 from datetime import datetime
@@ -10,7 +11,6 @@ from googleapiclient.discovery import build
 import traceback
 import base64
 import logging
-import hashlib
 import random
 import string
 
@@ -33,9 +33,9 @@ flow: InstalledAppFlow = InstalledAppFlow.from_client_secrets_file(
     redirect_uri=f"{Config.REDIRECT_URI}/callback",
 )
 
-def google_login(user_ref: fs.DocumentReference, phone_number):
+def google_login(user_manager: UserManager):
     # Generar URL de autenticación y redirigir al usuario
-    encoded = encode_state(phone_number)
+    encoded = encode_state(user_manager.user_phone)
     state = encoded
     authorization_url, state = flow.authorization_url(
         state=state, access_type="offline", prompt="consent"
@@ -43,18 +43,19 @@ def google_login(user_ref: fs.DocumentReference, phone_number):
 
     short_id = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
 
-    user_doc = user_ref.get().to_dict()
-    current_url_maps = user_doc.get("url_map", {})
+    # user_doc = user_ref.get().to_dict()
+    new_map = {short_id: authorization_url}
+    user_manager.user_document.url_map.update(new_map)
 
-    current_url_maps[short_id] = authorization_url
+    # current_url_maps[short_id] = authorization_url
 
-    user_ref.update(
-            {
-                "url_map": current_url_maps,
-            }
-        )
+    # user_ref.update(
+    #         {
+    #             "url_map": current_url_maps,
+    #         }
+    #     )
     
-    short_url = f"{Config.REDIRECT_URI}/google-auth?user={phone_number}&to={short_id}"
+    short_url = f"{Config.REDIRECT_URI}/google-auth?user={user_manager.user_phone}&to={short_id}"
     return {"auth_url": short_url}
 
 def refresh_access_token(credentials: Credentials) -> Credentials | None:
