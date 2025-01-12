@@ -3,7 +3,6 @@ from src.components.tool import set_action
 import logging
 import uuid
 import time as time_library
-from google.cloud import firestore
 from src.components.memory import Memory
 from src.firebase.users_manager import CredsResponse, UserManager
 from src.google.google_services import (
@@ -18,8 +17,6 @@ from datetime import datetime
 
 
 def tool_workflow(
-    db: firestore.Client,
-    phone_number,
     memory: Memory,
     *,
     to_emails: str,
@@ -133,15 +130,11 @@ def email_scheduler(
     collector.add_tool_collector(EmailScheduleToolCollector, call_id)
     collector.set_last_tool_call_id(call_id=call_id)
 
-    phone_number = kwargs.get("user_phone", Collector())
-    db: firestore.Client = kwargs.get("db", Collector())
     memory: Memory = kwargs.get("memory")
 
     date_time = convertir_a_datetime(date=date, time=time)
 
     res_dict = tool_workflow(
-        db,
-        phone_number,
         memory,
         to_emails=to_emails,
         subject=subject,
@@ -149,15 +142,11 @@ def email_scheduler(
         date_time=date_time,
     )
 
-    # res_dict = tool_workflow_from_variables(
-    #     measurement_system_name, measurement_system_tag, variable_name, date
-    # )
-
     tool_collector: EmailScheduleToolCollector = collector.ToolsCollector[call_id]
 
     params = {
         "call_id": call_id,
-        "tool_name": "EmailSchedule",
+        "tool_name": "email_scheduler",
     }
     start_time = time_library.time()
     try:
@@ -172,7 +161,7 @@ def email_scheduler(
                 "tool_friendly_response": {"response": {e}},
             }
         )
-        logging.info(f"Error en la tool 'EmailSchedule': {e}")
+        logging.info(f"Error en la tool 'email_scheduler': {e}")
 
     finally:
         c = tool_collector or EmailScheduleToolCollector()
