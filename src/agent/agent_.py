@@ -228,8 +228,8 @@ class Agent:
                 try:
                     parameters["collector"] = self.collector
                     parameters["memory"] = self.memory
-                    parameters["user_phone"] = self.memory.user_manager.user_phone
-                    parameters["db"] = self.memory.user_manager.db
+                    # parameters["user_phone"] = self.memory.user_manager.user_phone
+                    # parameters["db"] = self.memory.user_manager.db
 
 
                 except Exception as e:
