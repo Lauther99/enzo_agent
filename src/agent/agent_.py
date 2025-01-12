@@ -2,7 +2,6 @@ from src.agent.tools.collectors import Collector
 from src.components.memory import Memory
 from src.components.llms import BaseGenericLLM, GenericLLM
 from src.components.prompt import ChatTemplate
-from src.utils.utils import str_in_placeholders, ensure_json_format
 from src.components.tool import BaseTool
 import uuid
 import logging
@@ -11,8 +10,6 @@ from typing import Dict
 from src.agent.types import Base_Agent_Response, Base_LLM_Response, BaseToolResponse
 from src.whatsapp.requests.requests_ import WhatsAppSession
 from src.settings.settings import Config
-import asyncio
-# from transformers import Tool
 
 
 WHATSAPP_URL = Config.WHATSAPP_URL
@@ -99,6 +96,7 @@ def base_agent_chat_generation_2(
         max_tokens=max_tokens,
         has_stream=stream,
     )
+    logging.info(content_)
 
     cleaned_content = f"""{content_.split("<end_action>")[0].strip()}<end_action>"""
 
@@ -207,7 +205,7 @@ class Agent:
 
         if response_dict.action == "final_answer":
             waid = send_whatsapp_message(
-                to_phone=self.memory.user_phone,
+                to_phone=self.memory.user_manager.user_phone,
                 message=response_dict.final_answer,
             )
 
@@ -223,40 +221,18 @@ class Agent:
 
             if action_name in tools:
                 action = tools[action_name]
-                # action_input = ensure_json_format(action_input, action.args)
                 logging.info(f"{action_input}\n\n")
 
                 parameters = action_input
-                # try:
-                    
-
-                # except Exception as e:
-                #     message = f"Hubo al intentar ingresar a la Tool {action_name} con los parametros: {e}"
-                #     logging.debug(message)
-                #     # aqui agregamos el mensaje de error como tool al chat
-                #     self.memory.add_tool_message(message)
-                #     # tool_message = self.memory.add_tool_message(message, tool_name=str(action_name), replied_message_id=assistant_message_id)
-                #     # tool_message_id = tool_message.metadata["message_id"]
-
-                #     return self.agent_loop_2(
-                #         tools,
-                #         max_iterarions,
-                #         current_iteration + 1,
-                #     )
 
                 try:
-                    # for k, v in action.args.items():
-                    #     parameters[k] = v(parameters[k])
-                    # parameters["memory"] = self.memory
                     parameters["collector"] = self.collector
                     parameters["memory"] = self.memory
-                    parameters["user_phone"] = self.memory.user_phone
-                    parameters["db"] = self.memory.db
+                    parameters["user_phone"] = self.memory.user_manager.user_phone
+                    parameters["db"] = self.memory.user_manager.db
 
 
                 except Exception as e:
-                    # tool_message = self.memory.add_tool_message(e, tool_name=str(action_name), replied_message_id=assistant_message_id)
-                    # tool_message_id = tool_message.metadata["message_id"]
                     message = f"Error al ingresar los parametros en el action: {e}\n"
                     self.memory.add_tool_message(message, action_name)
                     logging.debug(message)
@@ -298,16 +274,13 @@ class Agent:
                     )
                 else:
                     waid = send_whatsapp_message(
-                        to_phone=self.memory.user_phone,
-                        message=response_dict.content,
+                        to_phone=self.memory.user_manager.user_phone,
+                        message="Exceed number of iterations, try again later.",
                     )
                     
                     self.memory.add_assistant_message(
                         message="Exceed number of iterations, try again later.",
                         waid=waid
-                        # iterations=current_iteration,
-                        # tool_calls=list(self.collector.ToolsCollector.keys()),
-                        # replied_message=tool_message_id,
                     )
 
                     return
@@ -325,12 +298,3 @@ class AgentExecutor:
             tools=self.tools,
             max_iterarions=max_iterations,
         )
-
-    def save_memory(self):
-        try:
-            self.agent.memory.save_memory()
-
-        except Exception as e:
-            logging.debug(f"An error ocurred: {e}")
-
-
