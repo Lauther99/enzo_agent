@@ -3,14 +3,15 @@ from src.components.tool import BaseTool
 import src.whatsapp.types as wsp_types
 from google.cloud import firestore
 from src.agent.tools.email_scheduler import email_scheduler
+from src.agent.tools.google_auth import google_auth_url
 from src.settings.settings import Config
 from src.components.memory import Memory
 from src.agent.agent_ import Agent, AgentExecutor
-from huggingface_hub import InferenceClient
 from src.firebase.users_manager import UserManager
 
 tools: dict[str, BaseTool] = {
     "email_scheduler": email_scheduler,
+    "google_auth_url": google_auth_url,
 }
 
 GROQ_API_KEY = Config.GROQ_API_KEY
