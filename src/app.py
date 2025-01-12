@@ -1,17 +1,18 @@
-from apscheduler.schedulers.background import BackgroundScheduler
+from src.firebase.users_manager import UserManager
+from src.scheduler.scheduler import scheduler, schedule_chat_manager
 from src.google.google_services import flow, db
 from src.google.utils import decode_state
 from src.whatsapp.utils.is_notification import is_notification
 from src.whatsapp.utils.message_filter import filter_message_data
 from src.whatsapp.whatsapp import chat_manager
-from src.firebase.users_manager import save_jwt_to_firebase
+# from src.firebase.users_manager import save_jwt_to_firebase
 import logging
 from fastapi import FastAPI, Request, HTTPException, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 import traceback
-from src.firebase.users_manager import find_short_url
+# from src.firebase.users_manager import find_short_url
 from src.settings.settings import Config
 from fastapi.responses import RedirectResponse, HTMLResponse
 from src.utils.utils import html_wrong_google_url, html_close
@@ -33,16 +34,15 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 
-scheduler = BackgroundScheduler()
-scheduler.start()
-
 @app.get("/google-auth")
 async def google_auth_redirect(request: Request):
     query_params = request.query_params
     
     user_phone = query_params.get("user")
     short_id = query_params.get("to") 
-    google_auth_url = find_short_url(db, user_phone, short_id)
+
+    user_manager = UserManager(db, user_phone)
+    google_auth_url = user_manager.find_short_url(short_id)
 
     if google_auth_url:
         return RedirectResponse(url=google_auth_url)
@@ -64,7 +64,10 @@ async def callback(request: Request):
         logging.info(decoded_state)
         user_phone = decoded_state["phone_number"]
 
-        save_jwt_to_firebase(db, user_phone, flow.credentials)
+        user_manager = UserManager(db, user_phone)
+        user_manager.save_jwt_to_firebase(flow.credentials)
+
+        user_manager.save_to_chat()
         return HTMLResponse(content=html_close, status_code=200)
 
     except Exception as e:
@@ -115,55 +118,30 @@ async def post_wsp_webhook(request: Request, response: Response):
             message_data = filter_message_data(incoming_message)
             logging.info("Processing Incoming Message")
             # Assuming db is a database connection or manager
-            await chat_manager(db, message_data)
+
+            schedule_chat_manager(chat_manager, db, message_data)
+            # await chat_manager(db, message_data)
         
         return JSONResponse(content={"message": "Ok"}, status_code=200)
 
     except Exception as error:
-        logging.error(f"Error in POST /wsp-webhook: {error}")
+        logging.debug(f"Error in POST /wsp-webhook: {error}")
         raise HTTPException(status_code=400, detail="Error processing request")
 
 
-# def send_email_task():
-#     data = request.json
-
-#     # Validar y obtener los campos necesarios
-#     credentials_json = data.get("credentials")
-#     to_email = data.get("to_email")
-#     subject = data.get("subject")
-#     body = data.get("body")
-#     date = data.get("date")  # Formato: YYYY-MM-DDTHH:MM:SS
-
-#     try:
-#         # Convertir la fecha al formato de datetime
-#         scheduled_time = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
-#         scheduled_time = pytz.UTC.localize(
-#             scheduled_time
-#         )  # Asegurarse de manejar zonas horarias
-
-#         # Verificar si el tiempo ya se venció
-#         now = datetime.datetime.now().replace(tzinfo=pytz.UTC)
-#         if scheduled_time <= now:
-#             send_email_task(credentials_json, to_email, subject, body)
-#             return jsonify(
-#                 {"message": "El tiempo ya se venció. Correo enviado inmediatamente."}
-#             )
-
-#         # Programar el correo
-#         scheduler.add_job(
-#             send_email_task,
-#             trigger=DateTrigger(run_date=scheduled_time),
-#             args=[credentials_json, to_email, subject, body],
-#         )
-#         return jsonify(
-#             {"message": "Correo programado exitosamente", "scheduled_time": date}
-#         )
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 400
 
 
+async def startup_event():
+    logging.info("Iniciando el scheduler.")
+    scheduler.start()
 
+# Función que se ejecuta cuando la app se apague (shutdown)
+async def shutdown_event():
+    logging.info("Apagando el scheduler.")
+    scheduler.shutdown()
 
-
+# Registramos los eventos al inicio y al cierre de la aplicación
+app.add_event_handler("startup", startup_event)
+app.add_event_handler("shutdown", shutdown_event)
 
 
