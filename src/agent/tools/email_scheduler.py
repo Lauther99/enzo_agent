@@ -5,13 +5,16 @@ import uuid
 import time as time_library
 from google.cloud import firestore
 from src.components.memory import Memory
-from src.firebase.users_manager import get_creds_from_firebase, CredsResponse
+from src.firebase.users_manager import CredsResponse, UserManager
 from src.google.google_services import (
     refresh_access_token,
     google_login,
     send_google_email,
 )
 from google.oauth2.credentials import Credentials
+from src.scheduler.scheduler import schedule_task
+from src.utils.utils import convertir_a_datetime
+from datetime import datetime
 
 
 def tool_workflow(
@@ -22,54 +25,94 @@ def tool_workflow(
     to_emails: str,
     subject: str,
     body: str,
-    date: str,
-    time: str,
+    date_time: datetime,
 ):
-    firebase_response: CredsResponse = get_creds_from_firebase(db, phone_number)
-    user_ref = memory.user_ref
+    user_manager: UserManager = memory.user_manager
+    firebase_response: CredsResponse = user_manager.get_creds_from_firebase()
+
     res = send_email(
-        db,
-        phone_number,
-        user_ref,
+        user_manager,
         need_login=firebase_response.need_login,
         credentials=firebase_response.response,
         to_emails=to_emails,
         subject=subject,
         body=body,
-        date=date,
-        time=time
+        scheduled_time=date_time,
     )
     return res
 
 
 def send_email(
-    db,
-    phone_number,
-    user_ref,
+    user_manager: UserManager,
     *,
     need_login=False,
     credentials: Credentials = None,
     to_emails: str,
     subject: str,
     body: str,
-    date: str,
-    time: str,
+    scheduled_time: datetime,
 ):
-    if need_login:
-        auth_url = google_login(user_ref, phone_number)
-        message = f"""User must login, please ask him to got to this url: {auth_url}"""
-        return {"response": message}
-    else:
+    now = datetime.now()
+
+    try:
+        # Autenticación si es necesario
+        if need_login:
+            auth_url = google_login(user_manager)
+            message = f"El usuario se debe autenticar en google, por favor pídele que ingrese al siguiente URL para que pueda atenticarse en google: {auth_url}"
+            logging.info(message)
+            return {"response": message}
+        
         credentials = refresh_access_token(credentials)
         if not credentials:
-            send_email(db, phone_number, True)
-        r = send_google_email(credentials, to_emails, subject, body)
-        return r
+            logging.error("Credenciales no disponibles o no válidas. Requiere inicio de sesión.")
+            return send_email(
+                user_manager=user_manager,
+                need_login=True, 
+                to_emails=to_emails, 
+                subject=subject, 
+                body=body, 
+                scheduled_time=scheduled_time
+            )
+
+        # Preparar argumentos para enviar el correo
+        kwargs = {
+            "c": credentials,
+            "to_emails": to_emails,
+            "subject": subject,
+            "body": body,
+        }
+
+        # Enviar inmediatamente si la hora ya pasó
+        if scheduled_time <= now:
+            logging.info("El tiempo ya se venció. Correo enviado inmediatamente.")
+            r = send_google_email(**kwargs)
+            return r
+
+        # Programar el correo
+
+
+        s_response = schedule_task(func=send_google_email, kwargs=kwargs, date=scheduled_time)
+        if s_response.response:
+            logging.info(f"Correo agendado para {scheduled_time}.")
+            return {
+                "success": True,
+                "message": f"Correo agendado, se enviará el {scheduled_time.strftime('día %B %d, %Y, a las %H:%M:%S')}",
+            }
+        else:
+            logging.error(f"Error al agendar el correo: {s_response.message}")
+            return {
+                "failed": True,
+                "message": f"Un error ocurrió al momento de agendar el correo: {s_response.message}",
+            }
+
+    except Exception as e:
+        logging.exception("Ocurrió un error inesperado en send_email.")
+        return {"failed": True, "message": f"Error inesperado: {str(e)}"}
 
 
 @set_action
 def email_scheduler(
-    to_emails: str, date: str, time:str, subject: str, body: str, **kwargs
+    to_emails: str, date: str, time: str, subject: str, body: str, **kwargs
 ) -> dict:
     """
     To schedule and send an email to one or more guests using an email API.
@@ -94,6 +137,8 @@ def email_scheduler(
     db: firestore.Client = kwargs.get("db", Collector())
     memory: Memory = kwargs.get("memory")
 
+    date_time = convertir_a_datetime(date=date, time=time)
+
     res_dict = tool_workflow(
         db,
         phone_number,
@@ -101,8 +146,7 @@ def email_scheduler(
         to_emails=to_emails,
         subject=subject,
         body=body,
-        date=date,
-        time=time
+        date_time=date_time,
     )
 
     # res_dict = tool_workflow_from_variables(
