@@ -51,17 +51,24 @@ class MessageDataType:
 class UsersCollection:
     def __init__(
         self,
-        name: str,
-        phone: str,
-        last_interaction: str,
-        messages: List[MessageDataType],
-        last_message: Optional[MessageDataType],
+        phone: str = None,
+        bot_phone: str = None,
+        google_auth: str = None,
+        last_interaction: str = None,
+        messages: List[MessageDataType] = [],
+        last_message: Optional[MessageDataType] = None,
+        current_waids: list[str] = [],
+        url_map: dict = {}
     ):
-        self.name = name
         self.phone = phone
         self.last_interaction = last_interaction
         self.messages = messages
         self.last_message = last_message
+        self.current_waids = current_waids
+        self.google_auth = google_auth
+        self.url_map = url_map
+        self.bot_phone = bot_phone
+        # self.system_prompt = 
 
     @classmethod
     def from_json(cls, data: dict) -> "UsersCollection":
@@ -69,8 +76,11 @@ class UsersCollection:
         Crea una instancia de UsersCollection a partir de un diccionario JSON.
         """
         return cls(
-            name=data.get("name", ""),
             phone=data.get("phone", ""),
+            bot_phone=data.get("bot_phone", ""),
+            google_auth=data.get("google_auth", ""),
+            current_waids=data.get("current_waids", []),
+            url_map=data.get("url_map", {}),
             last_interaction=data.get("last_interaction", ""),
             messages=[
                 MessageDataType.from_json(msg) for msg in data.get("messages", [])
@@ -87,9 +97,12 @@ class UsersCollection:
         Convierte la instancia de UsersCollection en un diccionario JSON.
         """
         return {
-            "name": self.name,
             "phone": self.phone,
+            "bot_phone": self.bot_phone,
             "last_interaction": self.last_interaction,
+            "google_auth": self.google_auth,
+            "current_waids": self.current_waids,
+            "url_map": self.url_map,
             "messages": [msg.to_json() for msg in self.messages],
             "last_message": self.last_message.to_json() if self.last_message else None,
         }
