@@ -1,8 +1,8 @@
 import re
-import datetime
 import jwt
 import json
 from src.settings.settings import Config
+from datetime import datetime
 
 html_close = """<html>
             <body>
@@ -61,3 +61,27 @@ def txt_2_Json(txt: str, line_delimiter="\n", **kwargs) -> dict[str, any]:
     res = json.dumps(datos, indent=4)
     res = json.loads(res)
     return res
+
+
+
+def convertir_a_datetime(date: str, time: str) -> datetime:
+    """
+    Convierte los argumentos `date` y `time` en un objeto `datetime`.
+
+    Args:
+        date: Fecha en formato 'YYYY-MM-DD' o 'NOW' para la fecha actual.
+        time: Hora en formato 'HH:MM:SS' o 'NOW' para la hora actual.
+
+    Returns:
+        Un objeto `datetime` resultante de la combinación de `date` y `time`.
+    """
+    if date.upper().strip() == "NOW" or time.upper().strip() == "NOW":
+        # Si cualquiera de los argumentos es "NOW", usar el momento actual
+        return datetime.now()
+    
+    try:
+        # Combinar la fecha y hora para crear el datetime
+        combined_datetime = datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M:%S")
+        return combined_datetime
+    except ValueError as e:
+        raise ValueError(f"Formato inválido para 'date' o 'time': {str(e)}")
