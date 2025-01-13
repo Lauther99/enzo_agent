@@ -12,4 +12,5 @@ class Config:
     REDIRECT_URI = env("REDIRECT_URI")
     WHATSAPP_URL = env("WHATSAPP_URL")
     META_TOKEN = env("META_TOKEN")
+    TIMEZONE = env("TIMEZONE")
 
