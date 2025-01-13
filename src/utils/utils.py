@@ -3,6 +3,8 @@ import jwt
 import json
 from src.settings.settings import Config
 from datetime import datetime
+import pytz
+from zoneinfo import ZoneInfo
 
 html_close = """<html>
             <body>
@@ -85,3 +87,32 @@ def convertir_a_datetime(date: str, time: str) -> datetime:
         return combined_datetime
     except ValueError as e:
         raise ValueError(f"Formato inválido para 'date' o 'time': {str(e)}")
+
+def convert_to_timezone(date_string: str, timezone_name: str = Config.TIMEZONE) -> str:
+    """
+    Convierte una fecha en formato ISO (YYYY-MM-DD) a un datetime con la zona horaria especificada.
+
+    Args:
+        date_string (str): Fecha en formato "YYYY-MM-DD".
+        timezone_name (str): Nombre de la zona horaria (ejemplo: "America/Lima").
+
+    Returns:
+        str: Fecha y hora con la zona horaria, en formato "YYYY-MM-DD HH:MM:SS±HH:MM".
+    """
+    try:
+        # Convertir la cadena a un objeto datetime
+        local_time = datetime.fromisoformat(date_string)
+        
+        # Asignar la zona horaria especificada
+        local_time_with_timezone = local_time.replace(tzinfo=ZoneInfo(timezone_name))
+        
+        # Retornar la representación como cadena
+        return local_time_with_timezone.isoformat()
+    except Exception as e:
+        return f"Error: {e}"
+
+import random
+import string
+
+def generate_random_string(length: int = 16) -> str:
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
