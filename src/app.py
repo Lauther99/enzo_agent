@@ -3,16 +3,13 @@ from src.scheduler.scheduler import scheduler, schedule_chat_manager
 from src.google.google_services import flow, db
 from src.google.utils import decode_state
 from src.whatsapp.types import WhatsAppMessage, Props
-# from src.whatsapp.utils.message_filter import filter_message_data
 from src.whatsapp.whatsapp import chat_manager
-# from src.firebase.users_manager import save_jwt_to_firebase
 import logging
 from fastapi import FastAPI, Request, HTTPException, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 import traceback
-# from src.firebase.users_manager import find_short_url
 from src.settings.settings import Config
 from fastapi.responses import RedirectResponse, HTMLResponse
 from src.utils.utils import html_wrong_google_url, html_close
@@ -28,7 +25,7 @@ app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permite todos los orígenes, puedes restringirlos si es necesario
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type"],
@@ -80,17 +77,13 @@ async def get_wsp_webhook(request: Request, response: Response):
         logging.info("GET endpoint hit")
         logging.info(f"Query parameters: {request.query_params}")
         
-        # Handle OPTIONS request (preflight)
         if request.method == "OPTIONS":
             response.headers["Access-Control-Allow-Methods"] = "GET, POST"
             response.headers["Access-Control-Allow-Headers"] = "Content-Type"
             response.headers["Access-Control-Max-Age"] = "3600"
             return Response(status_code=204)
-        
-        # Handle GET request and return challenge
 
         hub_challenge = request.query_params.get("hub.challenge")
-        
         return Response(content=hub_challenge)
     
     except Exception as error:
@@ -111,16 +104,12 @@ async def post_wsp_webhook(request: Request, response: Response):
             response.headers["Access-Control-Max-Age"] = "3600"
             return Response(status_code=204)
 
-        # Assuming WhatsappUtils and the necessary utility functions are implemented
         # Check if the incoming message is a notification
         is_notif = WhatsAppMessage.is_notification(incoming_message)
         if not is_notif:
             message_data = Props.filter_message_data(incoming_message)
             logging.info("Processing Incoming Message")
-            # Assuming db is a database connection or manager
-
             schedule_chat_manager(chat_manager, db, message_data)
-            # await chat_manager(db, message_data)
         
         return JSONResponse(content={"message": "Ok"}, status_code=200)
 
@@ -130,17 +119,14 @@ async def post_wsp_webhook(request: Request, response: Response):
 
 
 
-
 async def startup_event():
     logging.info("Iniciando el scheduler.")
     scheduler.start()
 
-# Función que se ejecuta cuando la app se apague (shutdown)
 async def shutdown_event():
     logging.info("Apagando el scheduler.")
     scheduler.shutdown()
 
-# Registramos los eventos al inicio y al cierre de la aplicación
 app.add_event_handler("startup", startup_event)
 app.add_event_handler("shutdown", shutdown_event)
 
