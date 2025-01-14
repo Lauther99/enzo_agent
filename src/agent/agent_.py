@@ -8,11 +8,7 @@ import logging
 import json
 from typing import Dict
 from src.agent.types import Base_Agent_Response, Base_LLM_Response, BaseToolResponse
-from src.whatsapp.requests.requests_ import WhatsAppSession
-from src.settings.settings import Config
 
-
-WHATSAPP_URL = Config.WHATSAPP_URL
 
 def chat(
     *,
