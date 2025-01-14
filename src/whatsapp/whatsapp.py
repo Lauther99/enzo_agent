@@ -127,6 +127,7 @@ def chat_manager(db: firestore.Client, message_data: wsp_types.Props):
 
     elif message_type == "audio":
         voice_note_path = download_whatsapp_voice_note(content, user_phone)
+        logging.info(f"Voice note downloaded in: {voice_note_path}")
 
         if voice_note_path:
             audio_transcription = default_llms[
