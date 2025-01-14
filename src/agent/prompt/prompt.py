@@ -127,6 +127,6 @@ def get_task_prompt(
     )
 
     tool_names = f'''{", ".join([tools[t].name for t in tools])}, final_answer.'''
-    content = SYSTEM_2.replace("{{tools}}", tool_descriptions)
-    content = SYSTEM_2.replace("{{tool_names}}", tool_names)
+    content = SYSTEM_2.replace("{{tools}}", tool_descriptions).replace("{{tool_names}}", tool_names)
+    
     return content
