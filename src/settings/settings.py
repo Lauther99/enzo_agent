@@ -16,5 +16,5 @@ class Config:
     META_ID = env("META_ID")
 
     TIMEZONE = env("TIMEZONE")
-    LANGUAGE = env("LANGUAGE_CODE")
+    LANGUAGE = env("LANGUAGE")
 
