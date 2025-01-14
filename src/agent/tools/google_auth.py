@@ -1,4 +1,4 @@
-from src.agent.tools.collectors import Collector, GoogleAuthToolCollector
+from src.agent.tools.collectors import Collector, BaseToolCollector
 from src.components.tool import set_action
 import logging
 import uuid
@@ -32,14 +32,14 @@ def google_auth_url(need_login: bool, **kwargs) -> dict:
     call_id = f"""tool-call--{uuid.uuid4().hex}"""
 
     collector: Collector = kwargs.get("collector", Collector())
-    collector.add_tool_collector(GoogleAuthToolCollector, call_id)
+    collector.add_tool_collector(BaseToolCollector, call_id)
     collector.set_last_tool_call_id(call_id=call_id)
 
     memory: Memory = kwargs.get("memory")
 
     res_dict = tool_workflow(memory)
 
-    tool_collector: GoogleAuthToolCollector = collector.ToolsCollector[call_id]
+    tool_collector: BaseToolCollector = collector.ToolsCollector[call_id]
 
     params = {
         "call_id": call_id,
@@ -61,7 +61,7 @@ def google_auth_url(need_login: bool, **kwargs) -> dict:
         logging.info(f"Error en la tool 'google_auth_url': {e}")
 
     finally:
-        c = tool_collector or GoogleAuthToolCollector()
+        c = tool_collector or BaseToolCollector()
         end_time = time_library.time()
         elapsed_time = end_time - start_time
         params["usage"] = {"response_time": elapsed_time}
