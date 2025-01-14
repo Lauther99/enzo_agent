@@ -10,7 +10,7 @@ scheduler = BackgroundScheduler()
 
 @dataclass
 class SchedulerResponse:
-    response: bool
+    success: bool
     message: str
 
 
@@ -33,12 +33,12 @@ def schedule_task(func: Callable[..., Any], kwargs: dict = {}, *, date: datetime
         m = f"Tarea programada para: {date}. Función: {func.__name__}, kwargs: {kwargs}"
         logging.info(m)
 
-        return SchedulerResponse(response=True, message=m)
+        return SchedulerResponse(success=True, message=m)
 
     except Exception as e:
         m = f"Error al programar la tarea: {str(e)}"
         logging.error(m)
-        return SchedulerResponse(response=False, message=m)
+        return SchedulerResponse(success=False, message=m)
 
 def schedule_chat_manager(chat_manager: Callable[..., Any], db, message_data):
     logging.info("Agendando chat_manager para procesamiento en segundo plano.")
