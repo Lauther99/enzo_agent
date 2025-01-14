@@ -2,8 +2,8 @@ from src.firebase.users_manager import UserManager
 from src.scheduler.scheduler import scheduler, schedule_chat_manager
 from src.google.google_services import flow, db
 from src.google.utils import decode_state
-from src.whatsapp.utils.is_notification import is_notification
-from src.whatsapp.utils.message_filter import filter_message_data
+from src.whatsapp.types import WhatsAppMessage, Props
+# from src.whatsapp.utils.message_filter import filter_message_data
 from src.whatsapp.whatsapp import chat_manager
 # from src.firebase.users_manager import save_jwt_to_firebase
 import logging
@@ -113,9 +113,9 @@ async def post_wsp_webhook(request: Request, response: Response):
 
         # Assuming WhatsappUtils and the necessary utility functions are implemented
         # Check if the incoming message is a notification
-        is_notif = is_notification(incoming_message)
+        is_notif = WhatsAppMessage.is_notification(incoming_message)
         if not is_notif:
-            message_data = filter_message_data(incoming_message)
+            message_data = Props.filter_message_data(incoming_message)
             logging.info("Processing Incoming Message")
             # Assuming db is a database connection or manager
 
