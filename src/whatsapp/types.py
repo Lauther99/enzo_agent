@@ -1,4 +1,6 @@
+import logging
 from typing import List, Optional, Union
+from typing import Optional, Any, Dict
 
 
 class Profile:
@@ -152,6 +154,20 @@ class Message:
             "type": self.type,
             "image": Image.to_json(self.image),
         }
+    
+    def get_text_from_message(self) -> str:
+        if self.type == "button":
+            return self.text
+        if self.type == "text":
+            return self.text.body
+        if self.type == "interactive":
+            return "interactive"
+            # interactive = message.get("interactive", {})
+            # if "button_reply" in interactive:
+            #     return interactive["button_reply"].get("title", "")
+            # if "list_reply" in interactive:
+            #     return interactive["list_reply"].get("title", "")
+        return ""
 
 
 class Status:
@@ -261,7 +277,7 @@ class WhatsAppMessage:
     def __init__(self, object: str, entry: List[Entry]):
         self.object = object
         self.entry = entry
-    
+
     @classmethod
     def from_json(cls, data: dict):
         return cls(
@@ -269,6 +285,21 @@ class WhatsAppMessage:
             entry=[Entry.from_json(entry) for entry in data.get("entry", [])],
         )
     
+    @classmethod
+    def is_notification(cls, body_dict: Dict[str, Any]):
+        body = cls.from_json(body_dict)
+        try:
+            for entry in body.entry:
+                for change in entry.changes:
+                    if not change.value.messages:
+                        # no message, it's a notification
+                        logging.info("Notification received, skipping")
+                        return True
+        except Exception as error:
+            logging.error("isNotification failed", exc_info=True)
+            return False
+        return False
+
     def to_json(self):
         return {
             "object": self.object,
@@ -307,12 +338,12 @@ class MessageInfo:
 class Props:
     def __init__(
         self,
-        id: str,
-        context: Context,
-        messageInfo: MessageInfo,
-        userPhoneNumber: str,
-        botPhoneNumber: str,
-        botPhoneNumberId: str,
+        id: str = None,
+        context: Context = None,
+        messageInfo: MessageInfo = None,
+        userPhoneNumber: str = None,
+        botPhoneNumber: str = None,
+        botPhoneNumberId: str = None,
     ):
         self.id = id
         self.context = context
@@ -341,3 +372,92 @@ class Props:
             "botPhoneNumber": self.botPhoneNumber,
             "botPhoneNumberId": self.botPhoneNumberId,
         }
+    
+    @classmethod
+    def filter_message_data(cls, body_json: Dict[str, Any]) -> "Props":
+        props_instance = cls()
+
+        bot_phone_number = ""
+        bot_phone_number_id = ""
+        user_phone_number = ""
+        user_name = ""
+        local_message = None
+        context = None
+        id = ""
+
+        body = WhatsAppMessage.from_json(body_json)
+
+        try:
+            for entry in body.entry:
+                for change in entry.changes:
+                    if not change.value.messages:
+                        continue
+
+                    for message in change.value.messages:
+                        if message.context:
+                            context = {
+                                "from": message.context.from_,
+                                "id": message.context.id,
+                            }
+
+                        user_name = change.value.contacts[0].profile.name
+                        user_phone_number = message.from_
+                        bot_phone_number = change.value.metadata.display_phone_number
+                        bot_phone_number_id = change.value.metadata.phone_number_id
+                        id = message.id
+                        local_message = message
+
+                        if message.type not in ["text", "button", "interactive"]:
+                            props_dict = {
+                                "messageInfo": {
+                                    "content": "not-allowed",
+                                    "type": local_message.type if local_message else "",
+                                    "time": (
+                                        local_message.timestamp if local_message else ""
+                                    ),
+                                    "role": "user",
+                                    "username": user_name,
+                                },
+                                "id": id,
+                                "userPhoneNumber": user_phone_number,
+                                "botPhoneNumber": bot_phone_number,
+                                "botPhoneNumberId": bot_phone_number_id,
+                            }
+
+                            return props_instance.from_json(props_dict)
+                        else:
+                            message_info = {
+                                "content": message.get_text_from_message(),
+                                "type": message.type,
+                                "time": message.timestamp,
+                                "username": user_name,
+                                "role": "user",
+                            }
+                            props_dict = {
+                                "context": context,
+                                "messageInfo": message_info,
+                                "userPhoneNumber": user_phone_number,
+                                "botPhoneNumber": bot_phone_number,
+                                "botPhoneNumberId": bot_phone_number_id,
+                                "id": id,
+                            }
+                            return props_instance.from_json(props_dict)
+
+        except Exception as e:
+            print("isAllowedTypeMessage failed", e)
+
+            props_dict = {
+                "messageInfo": {
+                    "content": "not-allowed",
+                    "type": local_message.type if local_message else "",
+                    "time": local_message.timestamp if local_message else "",
+                    "username": user_name,
+                    "role": "user",
+                },
+                "id": id,
+                "userPhoneNumber": user_phone_number,
+                "botPhoneNumber": bot_phone_number,
+                "botPhoneNumberId": bot_phone_number_id,
+            }
+
+        return props_instance.from_json(props_dict)
