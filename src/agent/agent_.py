@@ -138,8 +138,6 @@ class Agent:
         cls,
     ):
         agent_instance = cls()
-        # agent_instance.memory = memory
-        # agent_instance.collector = collector
 
         agent_instance.llm_model = default_llms["from_HF_llama3_3_70b_instruct"]
         return agent_instance
@@ -163,12 +161,6 @@ class Agent:
         logging.info("\n\n\n")
 
         if response_dict.action == "final_answer":
-            # waid = send_whatsapp_message(
-            #     to_phone=self.memory.user_manager.user_phone,
-            #     message=response_dict.final_answer,
-            # )
-
-            # self.memory.add_assistant_message(response_dict.content, waid)
             return  response_dict
 
         else:
@@ -226,15 +218,6 @@ class Agent:
                         current_iteration + 1,
                     )
                 else:
-                    # waid = send_whatsapp_message(
-                    #     to_phone=self.memory.user_manager.user_phone,
-                    #     message="Exceed number of iterations, try again later.",
-                    # )
-                    
-                    # self.memory.add_assistant_message(
-                    #     message="Exceed number of iterations, try again later.",
-                    #     waid=waid
-                    # )
                     return Base_Agent_Response(
                         final_answer=message
                     )
