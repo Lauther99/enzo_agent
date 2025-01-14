@@ -83,7 +83,30 @@ class Button:
             "payload": self.payload,
         }
 
+class Audio:
+    def __init__(self, mime_type: str, sha256: str, id: str, voice: bool):
+        self.mime_type = mime_type
+        self.sha256 = sha256
+        self.id = id
+        self.voice = voice
 
+    @classmethod
+    def from_json(cls, data: dict):
+        return cls(
+            mime_type=data.get("mime_type", ""),
+            sha256=data.get("sha256", ""),
+            id=data.get("id", ""),
+            voice=data.get("voice", ""),
+        )
+
+    def to_json(self):
+        return {
+            "mime_type": self.mime_type,
+            "sha256": self.sha256,
+            "id": self.id,
+            "voice": self.voice,
+        }
+    
 class Image:
     def __init__(self, id: str, caption: str, mime_type: str, sha256: str):
         self.id = id
@@ -120,6 +143,7 @@ class Message:
         button: Button,
         type: str,
         image: Image,
+        audio: Audio,
     ):
         self.context = context
         self.from_ = from_
@@ -129,6 +153,7 @@ class Message:
         self.button = button
         self.type = type
         self.image = image
+        self.audio = audio
     
     @classmethod
     def from_json(cls, data: dict):
@@ -137,10 +162,11 @@ class Message:
             from_=data.get("from", ""),
             id=data.get("id", ""),
             timestamp=data.get("timestamp", ""),
+            type=data.get("type", ""),
             text=Text.from_json(data.get("text", {})),
             button=Button.from_json(data.get("button", {})),
-            type=data.get("type", ""),
             image=Image.from_json(data.get("image", {})),
+            audio=Audio.from_json(data.get("audio", {})),
         )
     
     def to_json(self):
@@ -153,15 +179,18 @@ class Message:
             "button": Button.to_json(self.button),
             "type": self.type,
             "image": Image.to_json(self.image),
+            "audio": Audio.to_json(self.audio),
         }
     
-    def get_text_from_message(self) -> str:
+    def get_important_content(self) -> str:
         if self.type == "button":
             return self.text
         if self.type == "text":
             return self.text.body
         if self.type == "interactive":
             return "interactive"
+        if self.type == "audio":
+            return self.audio.id
             # interactive = message.get("interactive", {})
             # if "button_reply" in interactive:
             #     return interactive["button_reply"].get("title", "")
@@ -375,8 +404,6 @@ class Props:
     
     @classmethod
     def filter_message_data(cls, body_json: Dict[str, Any]) -> "Props":
-        props_instance = cls()
-
         bot_phone_number = ""
         bot_phone_number_id = ""
         user_phone_number = ""
@@ -407,7 +434,7 @@ class Props:
                         id = message.id
                         local_message = message
 
-                        if message.type not in ["text", "button", "interactive"]:
+                        if message.type not in ["text", "button", "interactive", "audio"]:
                             props_dict = {
                                 "messageInfo": {
                                     "content": "not-allowed",
@@ -424,10 +451,10 @@ class Props:
                                 "botPhoneNumberId": bot_phone_number_id,
                             }
 
-                            return props_instance.from_json(props_dict)
+                            return cls.from_json(props_dict)
                         else:
                             message_info = {
-                                "content": message.get_text_from_message(),
+                                "content": message.get_important_content(),
                                 "type": message.type,
                                 "time": message.timestamp,
                                 "username": user_name,
@@ -441,7 +468,7 @@ class Props:
                                 "botPhoneNumberId": bot_phone_number_id,
                                 "id": id,
                             }
-                            return props_instance.from_json(props_dict)
+                            return cls.from_json(props_dict)
 
         except Exception as e:
             print("isAllowedTypeMessage failed", e)
@@ -460,4 +487,4 @@ class Props:
                 "botPhoneNumberId": bot_phone_number_id,
             }
 
-        return props_instance.from_json(props_dict)
+        return cls.from_json(props_dict)
