@@ -13,4 +13,5 @@ class Config:
     WHATSAPP_URL = env("WHATSAPP_URL")
     META_TOKEN = env("META_TOKEN")
     TIMEZONE = env("TIMEZONE")
+    LANGUAGE = env("LANGUAGE_CODE")
 
