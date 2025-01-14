@@ -130,8 +130,8 @@ def list_calendar_events(
             service.events()
             .list(
                 calendarId=calendar_id,
-                timeMin=convert_to_timezone(date_min),
-                timeMax=convert_to_timezone(date_max),
+                timeMin=date_min,
+                timeMax=date_max,
                 singleEvents=True,
                 orderBy="startTime",
             )
@@ -146,7 +146,7 @@ def list_calendar_events(
     except Exception as e:
         logging.error(f"Error al recuperar eventos: {e}")
         traceback.logging.error_exc()
-        return []
+        return None
     
 def edit_calendar_event(
     user_credentials: Credentials,
@@ -191,8 +191,6 @@ def edit_calendar_event(
         updated_data.update(conference_data)
 
     try:
-        # Crear credenciales desde el diccionario
-
         # Construir el servicio de la API de Google Calendar
         service = build("calendar", "v3", credentials=user_credentials)
 
@@ -219,7 +217,7 @@ def edit_calendar_event(
             .execute()
         )
 
-        return updated_event
+        return CalendarEvent.from_dict(updated_event)
 
     except Exception as e:
         logging.error(f"Error al actualizar el evento: {e}")
